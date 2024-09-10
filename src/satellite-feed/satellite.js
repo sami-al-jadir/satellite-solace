@@ -25,11 +25,6 @@ let session = solace.SolclientFactory.createSession({
    session.on(solace.SessionEventCode.UP_NOTICE, () => {
     console.log("Successfully connected to Satellite Broker.");
     publishDiagnosticsMessage();
-    try {
-        session.disconnect();
-    } catch (error) {
-        console.log(error.toString());
-    }
 });
 
 session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, (error) => {
@@ -57,6 +52,7 @@ session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, (event) => {
 });
 
 function publishDiagnosticsMessage() {
+    let satelliteNumber = "111";
     var messageText = 'Health Status: OK!';
     let diagnosticsTopic = `satellite/${satelliteNumber}/diagnostics`;
     var message = solace.SolclientFactory.createMessage();
