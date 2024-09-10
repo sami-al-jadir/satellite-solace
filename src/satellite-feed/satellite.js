@@ -22,34 +22,59 @@ let session = solace.SolclientFactory.createSession({
 
 // Define session event listeners
 
-   session.on(solaceModule.SessionEventCode.UP_NOTICE, () => {
+   session.on(solace.SessionEventCode.UP_NOTICE, () => {
     console.log("Successfully connected to Satellite Broker.");
-    publishMessage();
+    publishDiagnosticsMessage();
+    try {
+        session.disconnect();
+    } catch (error) {
+        console.log(error.toString());
+    }
 });
 
-session.on(solaceModule.SessionEventCode.CONNECT_FAILED_ERROR, (error) => {
+session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, (error) => {
     console.error("Failed to connect to Solace:", error.infoStr);
 });
 
-session.on(solaceModule.SessionEventCode.DISCONNECTED, () => {
+session.on(solace.SessionEventCode.DISCONNECTED, () => {
     console.log("Disconnected from Solace.");
 });
 
-session.on(solaceModule.SessionEventCode.SUBSCRIPTION_ERROR, (error) => {
+session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, (error) => {
     console.error("Subscription error occurred:", error.correlationKey);
 });
 
-session.on(solaceModule.SessionEventCode.SUBSCRIPTION_OK, (event) => {
+session.on(solace.SessionEventCode.SUBSCRIPTION_OK, (event) => {
     console.log("Subscription operation completed successfully.");
 });
 
-session.on(solaceModule.SessionEventCode.ACKNOWLEDGED_MESSAGE, (event) => {
+session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, (event) => {
     console.log("Message acknowledged by the broker.");
 });
 
-session.on(solaceModule.SessionEventCode.REJECTED_MESSAGE_ERROR, (event) => {
+session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, (event) => {
     console.error("Message was rejected by the broker:", event.infoStr);
 });
+
+function publishDiagnosticsMessage() {
+    var messageText = 'Health Status: OK!';
+    let diagnosticsTopic = `satellite/${satelliteNumber}/diagnostics`;
+    var message = solace.SolclientFactory.createMessage();
+message.setDestination(solace.SolclientFactory.createTopicDestination(diagnosticsTopic));
+message.setBinaryAttachment(messageText);
+message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
+if (session !== null) {
+    try {
+        session.send(message);
+        console.log('Diagnostic Message published.');
+    } catch (error) {
+        console.log(error.toString());
+    }
+} else {
+    console.log('Cannot publish because not connected to Solace message router.');
+}
+
+}
 
  // Connect the session
  try {
