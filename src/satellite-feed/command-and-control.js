@@ -7,7 +7,7 @@ const brokerConfig = {
   userName: "solace-cloud-client",
   password: "3e54dii9fv5lab027pgdonsd81",
 };
-
+let subscribed = false;
 // Initialize Solace client session
 var factoryProps = new solace.SolclientFactoryProperties();
 factoryProps.profile = solace.SolclientFactoryProfiles.version10;
@@ -22,29 +22,55 @@ let session = solace.SolclientFactory.createSession({
 
 console.log("This is the session ", solace.Session);
 
+// Session lifecycle event listeners
+session.on(solace.SessionEventCode.UP_NOTICE, () => {
+  console.log("Successfully connected to Satellite broker.");
+
+  // Subscribe to bus location and diagnostics topics
+  let satelliteNumber = "111"; // Example bus number
+  let locationTopic = `satellite/${satelliteNumber}/location`;
+  let diagnosticsTopic = `satellite/${satelliteNumber}/diagnostics`;
+
+  session.subscribe(
+    solace.SolclientFactory.createTopicDestination(locationTopic),
+    true, // Subscribe with confirmation
+    locationTopic,
+    10000 // Timeout in milliseconds
+  );
+  console.log("Subscribed to location topic:", locationTopic);
+
+  session.subscribe(
+    solace.SolclientFactory.createTopicDestination(diagnosticsTopic),
+    true, // Subscribe with confirmation
+    diagnosticsTopic,
+    10000 // Timeout in milliseconds
+  );
+  console.log("Subscribed to diagnostics topic:", diagnosticsTopic);
+});
+
+session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, (error) => {
+  console.log("Connection to Satellite broker failed:", error);
+});
+
+session.on(solace.SessionEventCode.DISCONNECTED, () => {
+  console.log("Disconnected from Satellite broker.");
+  session.dispose();
+});
+session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, function (sessionEvent) {
+  console.log("Cannot subscribe to topic: " + sessionEvent.correlationKey);
+});
+
+session.on(solace.SessionEventCode.SUBSCRIPTION_OK, function (sessionEvent) {
+  console.log(
+    "Successfully subscribed to topic: " + sessionEvent.correlationKey
+  );
+  console.log("=== Ready to receive messages. ===");
+});
 // Define message handling logic for receiving location and diagnostic messages
 session.on(solace.SessionEventCode.MESSAGE, (message) => {
   let topicName = message.getDestination().getName();
   let messageContent = message.getBinaryAttachment();
-
   console.log("Received message: ", messageContent, " from topic: ", topicName);
-
-  // Session lifecycle event listeners
-  session.on(solace.SessionEventCode.UP_NOTICE, () => {
-    console.log("Successfully connected to Satellite broker.");
-  });
-
-  session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, (error) => {
-    console.log("Connection to Satellite broker failed:", error);
-  });
-
-  session.on(solace.SessionEventCode.DISCONNECTED, () => {
-    console.log("Disconnected from Satellite broker.");
-    session.dispose();
-  });
-  session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, function (sessionEvent) {
-    console.log('Cannot subscribe to topic: ' + sessionEvent.correlationKey);
-});
 
   // Handle satellite location updates
   if (topicName.includes("location")) {
@@ -80,28 +106,7 @@ session.on(solace.SessionEventCode.MESSAGE, (message) => {
   }
 });
 
-// Connect the session to the broker and subscribe to topics
-//  session.connect()
-// Subscribe to bus location and diagnostics topics
-let satelliteNumber = "111"; // Example bus number
-let locationTopic = `satellite/${satelliteNumber}/location`;
-let diagnosticsTopic = `satellite/${satelliteNumber}/diagnostics`;
-
-session.subscribe(
-  solace.SolclientFactory.createTopicDestination(locationTopic),
-  true, // Subscribe with confirmation
-  locationTopic,
-  10000 // Timeout in milliseconds
-);
-console.log("Subscribed to location topic:", locationTopic);
-
-session.subscribe(
-  solace.SolclientFactory.createTopicDestination(diagnosticsTopic),
-  true, // Subscribe with confirmation
-  diagnosticsTopic,
-  10000 // Timeout in milliseconds
-);
-console.log("Subscribed to diagnostics topic:", diagnosticsTopic);
+// Connect the session to the broker
 
 try {
   session.connect();
