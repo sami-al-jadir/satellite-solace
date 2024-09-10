@@ -7,7 +7,7 @@ const brokerConfig = {
   userName: "solace-cloud-client",
   password: "3e54dii9fv5lab027pgdonsd81",
 };
-let subscribed = false;
+
 // Initialize Solace client session
 var factoryProps = new solace.SolclientFactoryProperties();
 factoryProps.profile = solace.SolclientFactoryProfiles.version10;
@@ -107,7 +107,6 @@ session.on(solace.SessionEventCode.MESSAGE, (message) => {
 });
 
 // Connect the session to the broker
-
 try {
   session.connect();
 } catch (error) {
